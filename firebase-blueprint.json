@@ -1,0 +1,146 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Player progression, high score, dengue hospitalization risk, and unlocked Special Equipment for killthebug.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID matching the document ID."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "Player's display name shown in the HUD."
+        },
+        "highScore": {
+          "type": "integer",
+          "description": "Highest defensive survival score achieved."
+        },
+        "dengueLosses": {
+          "type": "integer",
+          "description": "Consecutive defeats toward the 3-loss Dengue hospitalization threshold (0-3)."
+        },
+        "totalWins": {
+          "type": "integer",
+          "description": "Total Panic Attack waves survived."
+        },
+        "unlockedEquipment": {
+          "type": "array",
+          "description": "Bounded list of unlocked Special Equipment IDs (max 3)."
+        },
+        "equippedId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "enum": ["none", "za_zapper", "emerald_repellent", "ora_gauntlets"],
+          "description": "Currently equipped Special Equipment ID or 'none'."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was first created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last profile update."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "highScore",
+        "dengueLosses",
+        "totalWins",
+        "unlockedEquipment",
+        "equippedId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RunRecord": {
+      "title": "RunRecord",
+      "description": "Immutable match record for a completed 15s, 30s, or 60s killthebug Panic Attack run.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID matching the parent user document."
+        },
+        "panicDuration": {
+          "type": "integer",
+          "enum": [15, 30, 60],
+          "description": "Selected Panic Attack timer in seconds."
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20,
+          "enum": ["victory", "gameover", "hospitalized"],
+          "description": "Final outcome of the match."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Match score."
+        },
+        "kills": {
+          "type": "integer",
+          "description": "Total flies and mosquitoes splashed."
+        },
+        "superSmashes": {
+          "type": "integer",
+          "description": "Number of Right-Left-Clap JoJo Super Hand floor smashes triggered."
+        },
+        "maxCombo": {
+          "type": "integer",
+          "description": "Highest kill combo streak in the match."
+        },
+        "weatherPeak": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Peak procedural weather intensity reached during the run."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the run was logged."
+        }
+      },
+      "required": [
+        "userId",
+        "panicDuration",
+        "outcome",
+        "score",
+        "kills",
+        "superSmashes",
+        "maxCombo",
+        "weatherPeak",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Owner-isolated player profile and equipment progression."
+    },
+    "/users/{userId}/runs/{runId}": {
+      "schema": {
+        "$ref": "#/entities/RunRecord"
+      },
+      "description": "Owner-isolated immutable match history subcollection."
+    }
+  }
+}

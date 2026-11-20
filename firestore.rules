@@ -1,0 +1,183 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid',
+          'displayName',
+          'highScore',
+          'dengueLosses',
+          'totalWins',
+          'unlockedEquipment',
+          'equippedId',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'highScore',
+          'dengueLosses',
+          'totalWins',
+          'unlockedEquipment',
+          'equippedId',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.uid is string &&
+        data.uid.size() >= 1 &&
+        data.uid.size() <= 128 &&
+        data.uid == request.auth.uid &&
+        data.uid == userId &&
+        data.displayName is string &&
+        data.displayName.size() >= 1 &&
+        data.displayName.size() <= 60 &&
+        data.highScore is int &&
+        data.highScore >= 0 &&
+        data.highScore <= 100000000 &&
+        data.dengueLosses is int &&
+        data.dengueLosses >= 0 &&
+        data.dengueLosses <= 3 &&
+        data.totalWins is int &&
+        data.totalWins >= 0 &&
+        data.totalWins <= 100000 &&
+        data.unlockedEquipment is list &&
+        data.unlockedEquipment.size() <= 3 &&
+        data.unlockedEquipment.hasOnly(['za_zapper', 'emerald_repellent', 'ora_gauntlets']) &&
+        (data.unlockedEquipment.size() == 0 || data.unlockedEquipment[0] is string) &&
+        data.equippedId is string &&
+        data.equippedId.size() <= 32 &&
+        data.equippedId in ['none', 'za_zapper', 'emerald_repellent', 'ora_gauntlets'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidRunRecord(data, userId) {
+      return data.keys().hasAll([
+          'userId',
+          'panicDuration',
+          'outcome',
+          'score',
+          'kills',
+          'superSmashes',
+          'maxCombo',
+          'weatherPeak',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId',
+          'panicDuration',
+          'outcome',
+          'score',
+          'kills',
+          'superSmashes',
+          'maxCombo',
+          'weatherPeak',
+          'createdAt'
+        ]) &&
+        data.userId is string &&
+        data.userId.size() >= 1 &&
+        data.userId.size() <= 128 &&
+        data.userId == request.auth.uid &&
+        data.userId == userId &&
+        data.panicDuration is int &&
+        data.panicDuration in [15, 30, 60] &&
+        data.outcome is string &&
+        data.outcome.size() <= 20 &&
+        data.outcome in ['victory', 'gameover', 'hospitalized'] &&
+        data.score is int &&
+        data.score >= 0 &&
+        data.score <= 100000000 &&
+        data.kills is int &&
+        data.kills >= 0 &&
+        data.kills <= 10000 &&
+        data.superSmashes is int &&
+        data.superSmashes >= 0 &&
+        data.superSmashes <= 1000 &&
+        data.maxCombo is int &&
+        data.maxCombo >= 0 &&
+        data.maxCombo <= 10000 &&
+        data.weatherPeak is string &&
+        data.weatherPeak.size() >= 1 &&
+        data.weatherPeak.size() <= 40 &&
+        data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedUser() &&
+        isOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'equippedId', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'highScore',
+            'dengueLosses',
+            'totalWins',
+            'unlockedEquipment',
+            'equippedId',
+            'updatedAt'
+          ])
+        );
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /runs/{runId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(runId);
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isVerifiedUser() &&
+          isOwner(userId) &&
+          isValidId(userId) &&
+          isValidRunRecord(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(runId);
+      }
+    }
+  }
+}

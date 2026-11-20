@@ -1,0 +1,10 @@
+{
+  "name": "game sep sep ",
+  "description": "killthebug: JoJo anime 3D defensive bug-swatting game with procedural rain & wind weather, anatomical 3D hands, Right-Left-Clap Super Stand Floor Smash, spatial buzzing audio, Firebase persistence, and Gemini search grounding.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
